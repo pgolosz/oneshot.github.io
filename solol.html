@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Gate RPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .rank {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .rank.E { color: #8B4513; }
+        .rank.D { color: #A0A0A0; }
+        .rank.C { color: #FFD700; }
+        .rank.B { color: #4169E1; }
+        .rank.A { color: #FF4500; }
+        .rank.S { color: #FF1493; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .exp-bar, .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .exp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336, #ff9800);
+            transition: width 0.3s ease;
+        }
+
+        .battle-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .monster {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .monster h3 {
+            color: #ff6666;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .equipment {
+            margin-top: 20px;
+        }
+
+        .equipment-slot {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed #666;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+            min-height: 50px;
+            cursor: pointer;
+        }
+
+        .equipment-slot.equipped {
+            border: 2px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .inventory {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            border-radius: 5px;
+            padding: 8px;
+            margin: 3px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .item.common { border-left: 4px solid #8B4513; }
+        .item.uncommon { border-left: 4px solid #4CAF50; }
+        .item.rare { border-left: 4px solid #2196F3; }
+        .item.epic { border-left: 4px solid #9C27B0; }
+        .item.legendary { border-left: 4px solid #FF9800; }
+
+        .gate {
+            background: rgba(0, 100, 255, 0.3);
+            border: 2px solid #0066ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .gate.red {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            grid-column: 1 / -1;
+        }
+
+        .log div {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+
+        .damage { color: #ff6666; }
+        .heal { color: #66ff66; }
+        .exp { color: #ffff66; }
+        .item-drop { color: #66ccff; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="panel">
+            <div class="rank" id="playerRank">E RANK HUNTER</div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div>Level: <span id="playerLevel">1</span></div>
+                    <div>EXP: <span id="playerExp">0</span>/<span id="expRequired">100</span></div>
+                    <div class="exp-bar">
+                        <div class="exp-fill" id="expBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <div>HP: <span id="playerHP">100</span>/<span id="maxHP">100</span></div>
+                    <div class="hp-bar">
+                        <div class="hp-fill" id="hpBar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <div>Attack: <span id="playerAttack">10</span></div>
+                    <div>Defense: <span id="playerDefense">5</span></div>
+                </div>
+                <div class="stat">
+                    <div>Gold: <span id="playerGold">0</span></div>
+                    <div>Rank Progress: <span id="rankProgress">0</span>/10</div>
+                </div>
+            </div>
+
+            <div class="equipment">
+                <h3>Equipment</h3>
+                <div class="equipment-slot" id="weaponSlot" onclick="openEquipment('weapon')">
+                    <strong>Weapon:</strong> <span id="equippedWeapon">None</span>
+                </div>
+                <div class="equipment-slot" id="armorSlot" onclick="openEquipment('armor')">
+                    <strong>Armor:</strong> <span id="equippedArmor">None</span>
+                </div>
+            </div>
+
+            <div class="inventory">
+                <h3>Inventory</h3>
+                <div id="inventoryItems"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="battle-area">
+                <div class="monster" id="currentMonster">
+                    <h3 id="monsterName">No Monster</h3>
+                    <div>Level: <span id="monsterLevel">0</span></div>
+                    <div>HP: <span id="monsterHP">0</span>/<span id="monsterMaxHP">0</span></div>
+                    <div class="hp-bar">
+                        <div class="hp-fill" id="monsterHpBar" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <button onclick="findMonster()" id="findBtn">Find Monster</button>
+                <button onclick="attack()" id="attackBtn" disabled>Attack</button>
+                <button onclick="heal()" id="healBtn">Heal (5 Gold)</button>
+            </div>
+
+            <div id="gateArea"></div>
+        </div>
+
+        <div class="log" id="gameLog"></div>
+    </div>
+
+    <script>
+        // Game state
+        let player = {
+            rank: 'E',
+            level: 1,
+            exp: 0,
+            expRequired: 100,
+            hp: 100,
+            maxHP: 100,
+            attack: 10,
+            defense: 5,
+            gold: 0,
+            rankProgress: 0,
+            equipment: {
+                weapon: null,
+                armor: null
+            },
+            inventory: []
+        };
+
+        let currentMonster = null;
+        let currentGates = [];
+
+        const ranks = ['E', 'D', 'C', 'B', 'A', 'S'];
+        const rankColors = {
+            'E': '#8B4513',
+            'D': '#A0A0A0', 
+            'C': '#FFD700',
+            'B': '#4169E1',
+            'A': '#FF4500',
+            'S': '#FF1493'
+        };
+
+        const monsterTypes = {
+            'E': ['Goblin', 'Slime', 'Rat', 'Spider'],
+            'D': ['Orc', 'Wolf', 'Skeleton', 'Bat'],
+            'C': ['Troll', 'Bear', 'Zombie', 'Harpy'],
+            'B': ['Minotaur', 'Wyvern', 'Golem', 'Banshee'],
+            'A': ['Dragon', 'Lich', 'Demon', 'Phoenix'],
+            'S': ['Ancient Dragon', 'Demon Lord', 'Death Knight', 'Void Beast']
+        };
+
+        const itemTemplates = {
+            weapons: [
+                {name: 'Rusty Sword', attack: 5, rarity: 'common', rankReq: 'E', value: 10},
+                {name: 'Iron Sword', attack: 12, rarity: 'common', rankReq: 'D', value: 50},
+                {name: 'Steel Blade', attack: 20, rarity: 'uncommon', rankReq: 'C', value: 150},
+                {name: 'Magic Sword', attack: 35, rarity: 'rare', rankReq: 'B', value: 500},
+                {name: 'Legendary Blade', attack: 60, rarity: 'epic', rankReq: 'A', value: 1500},
+                {name: 'Divine Weapon', attack: 100, rarity: 'legendary', rankReq: 'S', value: 5000}
+            ],
+            armor: [
+                {name: 'Cloth Armor', defense: 3, rarity: 'common', rankReq: 'E', value: 15},
+                {name: 'Leather Armor', defense: 8, rarity: 'common', rankReq: 'D', value: 75},
+                {name: 'Chain Mail', defense: 15, rarity: 'uncommon', rankReq: 'C', value: 200},
+                {name: 'Plate Armor', defense: 25, rarity: 'rare', rankReq: 'B', value: 600},
+                {name: 'Enchanted Armor', defense: 45, rarity: 'epic', rankReq: 'A', value: 2000},
+                {name: 'Divine Protection', defense: 75, rarity: 'legendary', rankReq: 'S', value: 7000}
+            ]
+        };
+
+        function log(message, className = '') {
+            const logDiv = document.getElementById('gameLog');
+            const msgDiv = document.createElement('div');
+            msgDiv.textContent = message;
+            if (className) msgDiv.className = className;
+            logDiv.appendChild(msgDiv);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateDisplay() {
+            document.getElementById('playerRank').textContent = `${player.rank} RANK HUNTER`;
+            document.getElementById('playerRank').className = `rank ${player.rank}`;
+            document.getElementById('playerLevel').textContent = player.level;
+            document.getElementById('playerExp').textContent = player.exp;
+            document.getElementById('expRequired').textContent = player.expRequired;
+            document.getElementById('playerHP').textContent = player.hp;
+            document.getElementById('maxHP').textContent = player.maxHP;
+            document.getElementById('playerAttack').textContent = getTotalAttack();
+            document.getElementById('playerDefense').textContent = getTotalDefense();
+            document.getElementById('playerGold').textContent = player.gold;
+            document.getElementById('rankProgress').textContent = player.rankProgress;
+            
+            const expPercent = (player.exp / player.expRequired) * 100;
+            document.getElementById('expBar').style.width = expPercent + '%';
+            
+            const hpPercent = (player.hp / player.maxHP) * 100;
+            document.getElementById('hpBar').style.width = hpPercent + '%';
+
+            document.getElementById('equippedWeapon').textContent = player.equipment.weapon ? player.equipment.weapon.name : 'None';
+            document.getElementById('equippedArmor').textContent = player.equipment.armor ? player.equipment.armor.name : 'None';
+
+            updateInventoryDisplay();
+        }
+
+        function getTotalAttack() {
+            let attack = player.attack;
+            if (player.equipment.weapon) attack += player.equipment.weapon.attack;
+            return attack;
+        }
+
+        function getTotalDefense() {
+            let defense = player.defense;
+            if (player.equipment.armor) defense += player.equipment.armor.defense;
+            return defense;
+        }
+
+        function findMonster() {
+            const monsters = monsterTypes[player.rank];
+            const monsterName = monsters[Math.floor(Math.random() * monsters.length)];
+            const rankIndex = ranks.indexOf(player.rank);
+            const baseLevel = Math.max(1, player.level - 2 + Math.floor(Math.random() * 5));
+            
+            currentMonster = {
+                name: monsterName,
+                level: baseLevel,
+                hp: 50 + (baseLevel * 20) + (rankIndex * 30),
+                maxHP: 50 + (baseLevel * 20) + (rankIndex * 30),
+                attack: 8 + (baseLevel * 3) + (rankIndex * 5),
+                expReward: 25 + (baseLevel * 10) + (rankIndex * 15),
+                goldReward: 10 + (baseLevel * 5) + (rankIndex * 10)
+            };
+
+            document.getElementById('monsterName').textContent = currentMonster.name;
+            document.getElementById('monsterLevel').textContent = currentMonster.level;
+            document.getElementById('monsterHP').textContent = currentMonster.hp;
+            document.getElementById('monsterMaxHP').textContent = currentMonster.maxHP;
+            document.getElementById('monsterHpBar').style.width = '100%';
+            
+            document.getElementById('findBtn').disabled = true;
+            document.getElementById('attackBtn').disabled = false;
+            
+            log(`Found a ${currentMonster.name} (Level ${currentMonster.level})!`);
+        }
+
+        function attack() {
+            if (!currentMonster || player.hp <= 0) return;
+
+            const playerDamage = Math.max(1, getTotalAttack() - Math.floor(Math.random() * 5));
+            currentMonster.hp -= playerDamage;
+            log(`You deal ${playerDamage} damage to ${currentMonster.name}!`, 'damage');
+
+            if (currentMonster.hp <= 0) {
+                defeatMonster();
+                return;
+            }
+
+            const monsterDamage = Math.max(1, currentMonster.attack - getTotalDefense() + Math.floor(Math.random() * 5));
+            player.hp -= monsterDamage;
+            log(`${currentMonster.name} deals ${monsterDamage} damage to you!`, 'damage');
+
+            if (player.hp <= 0) {
+                player.hp = 0;
+                log('You have been defeated! Heal to continue fighting.', 'damage');
+                document.getElementById('attackBtn').disabled = true;
+            }
+
+            const monsterHpPercent = (currentMonster.hp / currentMonster.maxHP) * 100;
+            document.getElementById('monsterHpBar').style.width = monsterHpPercent + '%';
+            document.getElementById('monsterHP').textContent = Math.max(0, currentMonster.hp);
+            
+            updateDisplay();
+        }
+
+        function defeatMonster() {
+            log(`${currentMonster.name} defeated!`, 'exp');
+            
+            player.exp += currentMonster.expReward;
+            player.gold += currentMonster.goldReward;
+            player.rankProgress += 1;
+            
+            log(`Gained ${currentMonster.expReward} EXP and ${currentMonster.goldReward} gold!`, 'exp');
+
+            // Item drop chance
+            if (Math.random() < 0.3) {
+                dropItem();
+            }
+
+            // Gate chances
+            const gateRoll = Math.random();
+            if (gateRoll < 0.001) { // 0.1% chance for red gate
+                createGate('red');
+            } else if (gateRoll < 0.02) { // 2% chance for blue gate
+                createGate('blue');
+            }
+
+            checkLevelUp();
+            currentMonster = null;
+            
+            document.getElementById('findBtn').disabled = false;
+            document.getElementById('attackBtn').disabled = true;
+            document.getElementById('monsterName').textContent = 'No Monster';
+            document.getElementById('monsterLevel').textContent = '0';
+            document.getElementById('monsterHP').textContent = '0';
+            document.getElementById('monsterMaxHP').textContent = '0';
+            
+            updateDisplay();
+        }
+
+        function dropItem() {
+            const itemType = Math.random() < 0.5 ? 'weapons' : 'armor';
+            const rankIndex = ranks.indexOf(player.rank);
+            const availableItems = itemTemplates[itemType].filter(item => 
+                ranks.indexOf(item.rankReq) <= rankIndex + 1
+            );
+            
+            if (availableItems.length > 0) {
+                const item = {...availableItems[Math.floor(Math.random() * availableItems.length)]};
+                item.type = itemType.slice(0, -1); // Remove 's' from weapons/armor
+                player.inventory.push(item);
+                log(`Found ${item.name}!`, 'item-drop');
+            }
+        }
+
+        function checkLevelUp() {
+            while (player.exp >= player.expRequired) {
+                player.exp -= player.expRequired;
+                player.level++;
+                player.maxHP += 20;
+                player.hp = player.maxHP; // Full heal on level up
+                player.attack += 2;
+                player.defense += 1;
+                player.expRequired = Math.floor(player.expRequired * 1.5);
+                
+                log(`Level up! You are now level ${player.level}!`, 'heal');
+                
+                // Check rank up
+                if (player.rankProgress >= 10 && player.rank !== 'S') {
+                    rankUp();
+                }
+            }
+        }
+
+        function rankUp() {
+            const currentRankIndex = ranks.indexOf(player.rank);
+            if (currentRankIndex < ranks.length - 1) {
+                player.rank = ranks[currentRankIndex + 1];
+                player.rankProgress = 0;
+                player.maxHP += 50;
+                player.hp = player.maxHP;
+                player.attack += 10;
+                player.defense += 5;
+                
+                log(`RANK UP! You are now ${player.rank} Rank!`, 'heal');
+            }
+        }
+
+        function heal() {
+            if (player.gold >= 5 && player.hp < player.maxHP) {
+                player.gold -= 5;
+                player.hp = player.maxHP;
+                document.getElementById('attackBtn').disabled = false;
+                log('Fully healed!', 'heal');
+                updateDisplay();
+            }
+        }
+
+        function createGate(color) {
+            const gate = {
+                color: color,
+                level: player.level + (color === 'red' ? 10 : 3),
+                expMultiplier: color === 'red' ? 5 : 2,
+                goldMultiplier: color === 'red' ? 4 : 2
+            };
+            
+            currentGates.push(gate);
+            
+            const gateDiv = document.createElement('div');
+            gateDiv.className = `gate ${color}`;
+            gateDiv.innerHTML = `
+                <h3>${color.toUpperCase()} GATE OPENED!</h3>
+                <p>Recommended Level: ${gate.level}</p>
+                <p>EXP Bonus: ${gate.expMultiplier}x</p>
+                <button onclick="enterGate(${currentGates.length - 1})">Enter Gate</button>
+                <button onclick="closeGate(${currentGates.length - 1})">Close</button>
+            `;
+            
+            document.getElementById('gateArea').appendChild(gateDiv);
+            log(`A ${color} gate has appeared!`, 'item-drop');
+        }
+
+        function enterGate(gateIndex) {
+            const gate = currentGates[gateIndex];
+            if (!gate) return;
+            
+            // Create stronger monster
+            const monsters = monsterTypes[player.rank];
+            const monsterName = monsters[Math.floor(Math.random() * monsters.length)] + ' (Gate)';
+            
+            currentMonster = {
+                name: monsterName,
+                level: gate.level,
+                hp: (50 + (gate.level * 20)) * 2,
+                maxHP: (50 + (gate.level * 20)) * 2,
+                attack: (8 + (gate.level * 3)) * 1.5,
+                expReward: (25 + (gate.level * 10)) * gate.expMultiplier,
+                goldReward: (10 + (gate.level * 5)) * gate.goldMultiplier
+            };
+
+            document.getElementById('monsterName').textContent = currentMonster.name;
+            document.getElementById('monsterLevel').textContent = currentMonster.level;
+            document.getElementById('monsterHP').textContent = currentMonster.hp;
+            document.getElementById('monsterMaxHP').textContent = currentMonster.maxHP;
+            document.getElementById('monsterHpBar').style.width = '100%';
+            
+            document.getElementById('findBtn').disabled = true;
+            document.getElementById('attackBtn').disabled = false;
+            
+            closeGate(gateIndex);
+            log(`Entered the ${gate.color} gate and found ${currentMonster.name}!`);
+        }
+
+        function closeGate(gateIndex) {
+            currentGates.splice(gateIndex, 1);
+            document.getElementById('gateArea').innerHTML = '';
+            
+            // Recreate remaining gates with updated indices
+            currentGates.forEach((gate, index) => {
+                const gateDiv = document.createElement('div');
+                gateDiv.className = `gate ${gate.color}`;
+                gateDiv.innerHTML = `
+                    <h3>${gate.color.toUpperCase()} GATE</h3>
+                    <p>Recommended Level: ${gate.level}</p>
+                    <p>EXP Bonus: ${gate.expMultiplier}x</p>
+                    <button onclick="enterGate(${index})">Enter Gate</button>
+                    <button onclick="closeGate(${index})">Close</button>
+                `;
+                document.getElementById('gateArea').appendChild(gateDiv);
+            });
+        }
+
+        function updateInventoryDisplay() {
+            const inventoryDiv = document.getElementById('inventoryItems');
+            inventoryDiv.innerHTML = '';
+            
+            player.inventory.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `item ${item.rarity}`;
+                itemDiv.innerHTML = `
+                    <strong>${item.name}</strong><br>
+                    ${item.type === 'weapon' ? 'Attack' : 'Defense'}: +${item.type === 'weapon' ? item.attack : item.defense}<br>
+                    Rank Required: ${item.rankReq} | Value: ${item.value}g
+                `;
+                itemDiv.onclick = () => equipItem(index);
+                inventoryDiv.appendChild(itemDiv);
+            });
+        }
+
+        function equipItem(itemIndex) {
+            const item = player.inventory[itemIndex];
+            if (!item) return;
+            
+            const playerRankIndex = ranks.indexOf(player.rank);
+            const itemRankIndex = ranks.indexOf(item.rankReq);
+            
+            if (playerRankIndex < itemRankIndex) {
+                log(`You need to be ${item.rankReq} rank to equip this item!`, 'damage');
+                return;
+            }
+            
+            // Unequip current item
+            if (player.equipment[item.type]) {
+                player.inventory.push(player.equipment[item.type]);
+            }
+            
+            // Equip new item
+            player.equipment[item.type] = item;
+            player.inventory.splice(itemIndex, 1);
+            
+            log(`Equipped ${item.name}!`, 'heal');
+            updateDisplay();
+        }
+
+        // Initialize game
+        updateDisplay();
+        log('Welcome to Dungeon Gate RPG! Start by finding monsters to fight.');
+    </script>
+</body>
+</html>
