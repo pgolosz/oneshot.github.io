@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI One-Shot Portfolio</title>
+    <style src="styles.css"></style>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">AI OneShot</div>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#projects">Projects</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero" id="home">
+            <div class="container">
+                <h1>AI One-Shot Portfolio</h1>
+                <p>Explore a collection of AI-generated creative projects including interactive games, animations, stories, and experimental digital art pieces.</p>
+            </div>
+        </section>
+
+        <section id="projects">
+            <div class="container">
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="all">All Projects</button>
+                    <button class="filter-btn" data-filter="game">Games</button>
+                    <button class="filter-btn" data-filter="animation">Animations</button>
+                    <button class="filter-btn" data-filter="story">Stories</button>
+                    <button class="filter-btn" data-filter="art">Digital Art</button>
+                    <button class="filter-btn" data-filter="tool">Tools</button>
+                </div>
+
+                <div class="projects-grid" id="projectsGrid">
+                    <!-- Sample Projects -->
+                    <div class="project-card" data-type="game">
+                        <div class="project-image">🎮</div>
+                        <div class="project-content">
+                            <h3 class="project-title">Shannon Coder</h3>
+                            <div class="project-type">Game</div>
+                            <p class="project-description">Shannon Coder in da jungle</p>
+                            <div class="project-actions">
+                                <a href="./shannon_coder.html" class="btn btn-primary">Play Game</a>
+                                <a href="#" class="btn btn-secondary">View Prompt</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Project Modal -->
+    <div class="modal" id="addProjectModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <h2>Add New Project</h2>
+            <form id="addProjectForm">
+                <div class="form-group">
+                    <label for="projectTitle">Project Title</label>
+                    <input type="text" id="projectTitle" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="projectType">Project Type</label>
+                    <select id="projectType" name="type" required>
+                        <option value="">Select Type</option>
+                        <option value="game">Game</option>
+                        <option value="animation">Animation</option>
+                        <option value="story">Story</option>
+                        <option value="art">Digital Art</option>
+                        <option value="tool">Tool</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="projectDescription">Description</label>
+                    <textarea id="projectDescription" name="description" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="projectLink">Project Link (optional)</label>
+                    <input type="url" id="projectLink" name="link">
+                </div>
+                <div class="form-group">
+                    <label for="projectEmoji">Emoji Icon</label>
+                    <input type="text" id="projectEmoji" name="emoji" placeholder="🎮" maxlength="2">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+<script src="scripts.js"></script>
+</html>

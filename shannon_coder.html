@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shannon Coder - Vietnam Jungle Mission</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #2d4a2d;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(45deg, #1a3d1a 0%, #2d4a2d 50%, #1a3d1a 100%);
+            cursor: crosshair;
+        }
+
+        #hud {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 2px solid #4a7c4a;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+
+        .hud-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4a7c4a;
+            font-weight: bold;
+        }
+
+        .health-bar, .ammo-bar {
+            width: 100px;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #44ff44);
+            transition: width 0.3s ease;
+        }
+
+        .ammo-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffaa44, #44aaff);
+            transition: width 0.3s ease;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4a7c4a;
+            max-width: 300px;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #4a7c4a;
+            text-align: center;
+            display: none;
+        }
+
+        .btn {
+            background: #4a7c4a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            background: #5a8c5a;
+        }
+
+        .crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #ff4444;
+            box-shadow: 0 0 4px rgba(255, 68, 68, 0.5);
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+
+        .crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 0;
+            top: 9px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div class="crosshair" id="crosshair"></div>
+        
+        <div id="instructions">
+            <h3>🎖️ SHANNON CODER - Mission Brief</h3>
+            <p><strong>WASD:</strong> Move Shannon</p>
+            <p><strong>Mouse:</strong> Aim & Shoot</p>
+            <p><strong>Space:</strong> Rapid Fire</p>
+            <p><strong>Objective:</strong> Eliminate all enemy forces</p>
+            <p><strong>Watch out:</strong> Enemies patrol and shoot back!</p>
+        </div>
+
+        <div id="hud">
+            <div class="hud-section">
+                <div class="stat">
+                    <span>👤 SHANNON</span>
+                </div>
+                <div class="stat">
+                    <span>❤️</span>
+                    <div class="health-bar">
+                        <div class="health-fill" id="healthFill" style="width: 100%"></div>
+                    </div>
+                    <span id="healthText">100</span>
+                </div>
+            </div>
+            
+            <div class="hud-section">
+                <div class="stat">
+                    <span>🎯 KILLS: <span id="killCount">0</span></span>
+                </div>
+                <div class="stat">
+                    <span>💥</span>
+                    <div class="ammo-bar">
+                        <div class="ammo-fill" id="ammoFill" style="width: 100%"></div>
+                    </div>
+                    <span id="ammoText">30</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOver">
+            <h2 id="gameOverTitle">Mission Complete!</h2>
+            <p id="gameOverText">Shannon has eliminated all threats!</p>
+            <button class="btn" onclick="restartGame()">New Mission</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const crosshair = document.getElementById('crosshair');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 80; // Account for HUD
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        const gameState = {
+            player: {
+                x: 100,
+                y: 100,
+                size: 12,
+                health: 100,
+                maxHealth: 100,
+                speed: 3,
+                ammo: 30,
+                maxAmmo: 30,
+                lastShot: 0,
+                fireRate: 200
+            },
+            enemies: [],
+            bullets: [],
+            enemyBullets: [],
+            explosions: [],
+            trees: [],
+            kills: 0,
+            keys: {},
+            mouse: { x: 0, y: 0 },
+            gameRunning: true,
+            lastReload: 0
+        };
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                shoot();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            gameState.mouse.x = e.clientX - rect.left;
+            gameState.mouse.y = e.clientY - rect.top;
+            
+            crosshair.style.left = (e.clientX - 10) + 'px';
+            crosshair.style.top = (e.clientY - 10) + 'px';
+        });
+
+        canvas.addEventListener('click', () => {
+            shoot();
+        });
+
+        // Initialize game world
+        function initGame() {
+            // Generate jungle trees
+            gameState.trees = [];
+            for (let i = 0; i < 40; i++) {
+                gameState.trees.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: 15 + Math.random() * 25,
+                    type: Math.random() > 0.5 ? 'palm' : 'bush'
+                });
+            }
+
+            // Generate enemies
+            gameState.enemies = [];
+            for (let i = 0; i < 8; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * (canvas.width - 100) + 50;
+                    y = Math.random() * (canvas.height - 100) + 50;
+                } while (Math.hypot(x - gameState.player.x, y - gameState.player.y) < 150);
+
+                gameState.enemies.push({
+                    x: x,
+                    y: y,
+                    size: 10,
+                    health: 30,
+                    speed: 1 + Math.random(),
+                    lastShot: 0,
+                    fireRate: 1000 + Math.random() * 2000,
+                    patrolTarget: { x: x + (Math.random() - 0.5) * 200, y: y + (Math.random() - 0.5) * 200 },
+                    state: 'patrol' // patrol, chase, shoot
+                });
+            }
+
+            gameState.bullets = [];
+            gameState.enemyBullets = [];
+            gameState.explosions = [];
+            gameState.kills = 0;
+            gameState.player.health = gameState.player.maxHealth;
+            gameState.player.ammo = gameState.player.maxAmmo;
+            gameState.gameRunning = true;
+            
+            updateHUD();
+        }
+
+        // Shooting
+        function shoot() {
+            if (!gameState.gameRunning) return;
+            
+            const now = Date.now();
+            if (now - gameState.player.lastShot < gameState.player.fireRate) return;
+            if (gameState.player.ammo <= 0) return;
+
+            const dx = gameState.mouse.x - gameState.player.x;
+            const dy = gameState.mouse.y - gameState.player.y;
+            const dist = Math.hypot(dx, dy);
+
+            gameState.bullets.push({
+                x: gameState.player.x,
+                y: gameState.player.y,
+                vx: (dx / dist) * 8,
+                vy: (dy / dist) * 8,
+                life: 100
+            });
+
+            gameState.player.lastShot = now;
+            gameState.player.ammo--;
+            updateHUD();
+
+            // Auto-reload
+            if (gameState.player.ammo === 0 && now - gameState.lastReload > 2000) {
+                setTimeout(() => {
+                    gameState.player.ammo = gameState.player.maxAmmo;
+                    gameState.lastReload = Date.now();
+                    updateHUD();
+                }, 1500);
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameState.gameRunning) return;
+
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            // Player movement
+            if (gameState.keys['w'] || gameState.keys['arrowup']) gameState.player.y -= gameState.player.speed;
+            if (gameState.keys['s'] || gameState.keys['arrowdown']) gameState.player.y += gameState.player.speed;
+            if (gameState.keys['a'] || gameState.keys['arrowleft']) gameState.player.x -= gameState.player.speed;
+            if (gameState.keys['d'] || gameState.keys['arrowright']) gameState.player.x += gameState.player.speed;
+
+            // Keep player in bounds
+            gameState.player.x = Math.max(gameState.player.size, Math.min(canvas.width - gameState.player.size, gameState.player.x));
+            gameState.player.y = Math.max(gameState.player.size, Math.min(canvas.height - gameState.player.size, gameState.player.y));
+
+            // Update bullets
+            gameState.bullets = gameState.bullets.filter(bullet => {
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                bullet.life--;
+                return bullet.life > 0 && bullet.x > 0 && bullet.x < canvas.width && bullet.y > 0 && bullet.y < canvas.height;
+            });
+
+            // Update enemy bullets
+            gameState.enemyBullets = gameState.enemyBullets.filter(bullet => {
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                bullet.life--;
+                return bullet.life > 0 && bullet.x > 0 && bullet.x < canvas.width && bullet.y > 0 && bullet.y < canvas.height;
+            });
+
+            // Update enemies
+            const now = Date.now();
+            gameState.enemies.forEach(enemy => {
+                const distToPlayer = Math.hypot(enemy.x - gameState.player.x, enemy.y - gameState.player.y);
+                
+                if (distToPlayer < 150) {
+                    enemy.state = 'chase';
+                } else if (distToPlayer > 200) {
+                    enemy.state = 'patrol';
+                }
+
+                if (enemy.state === 'chase') {
+                    const dx = gameState.player.x - enemy.x;
+                    const dy = gameState.player.y - enemy.y;
+                    const dist = Math.hypot(dx, dy);
+                    
+                    enemy.x += (dx / dist) * enemy.speed;
+                    enemy.y += (dy / dist) * enemy.speed;
+
+                    // Enemy shooting
+                    if (distToPlayer < 120 && now - enemy.lastShot > enemy.fireRate) {
+                        gameState.enemyBullets.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            vx: (dx / dist) * 4,
+                            vy: (dy / dist) * 4,
+                            life: 80
+                        });
+                        enemy.lastShot = now;
+                    }
+                } else {
+                    // Patrol behavior
+                    const dx = enemy.patrolTarget.x - enemy.x;
+                    const dy = enemy.patrolTarget.y - enemy.y;
+                    const dist = Math.hypot(dx, dy);
+                    
+                    if (dist < 20) {
+                        enemy.patrolTarget.x = enemy.x + (Math.random() - 0.5) * 200;
+                        enemy.patrolTarget.y = enemy.y + (Math.random() - 0.5) * 200;
+                        enemy.patrolTarget.x = Math.max(50, Math.min(canvas.width - 50, enemy.patrolTarget.x));
+                        enemy.patrolTarget.y = Math.max(50, Math.min(canvas.height - 50, enemy.patrolTarget.y));
+                    } else {
+                        enemy.x += (dx / dist) * (enemy.speed * 0.5);
+                        enemy.y += (dy / dist) * (enemy.speed * 0.5);
+                    }
+                }
+            });
+
+            // Collision detection - player bullets vs enemies
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.bullets[i];
+                for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+                    const enemy = gameState.enemies[j];
+                    if (Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < enemy.size + 3) {
+                        // Hit enemy
+                        enemy.health -= 15;
+                        gameState.bullets.splice(i, 1);
+                        
+                        if (enemy.health <= 0) {
+                            gameState.explosions.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                size: 0,
+                                life: 20
+                            });
+                            gameState.enemies.splice(j, 1);
+                            gameState.kills++;
+                            updateHUD();
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Collision detection - enemy bullets vs player
+            for (let i = gameState.enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.enemyBullets[i];
+                if (Math.hypot(bullet.x - gameState.player.x, bullet.y - gameState.player.y) < gameState.player.size + 3) {
+                    gameState.player.health -= 10;
+                    gameState.enemyBullets.splice(i, 1);
+                    updateHUD();
+                    
+                    if (gameState.player.health <= 0) {
+                        endGame(false);
+                    }
+                }
+            }
+
+            // Update explosions
+            gameState.explosions = gameState.explosions.filter(explosion => {
+                explosion.size += 2;
+                explosion.life--;
+                return explosion.life > 0;
+            });
+
+            // Check win condition
+            if (gameState.enemies.length === 0) {
+                endGame(true);
+            }
+        }
+
+        function render() {
+            // Clear canvas with jungle background
+            ctx.fillStyle = '#1a3d1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw jungle pattern
+            ctx.fillStyle = '#2d4a2d';
+            for (let x = 0; x < canvas.width; x += 40) {
+                for (let y = 0; y < canvas.height; y += 40) {
+                    if ((x / 40 + y / 40) % 2) {
+                        ctx.fillRect(x, y, 40, 40);
+                    }
+                }
+            }
+
+            // Draw trees/bushes
+            gameState.trees.forEach(tree => {
+                if (tree.type === 'palm') {
+                    ctx.fillStyle = '#2d5a2d';
+                    ctx.beginPath();
+                    ctx.arc(tree.x, tree.y, tree.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#1a4a1a';
+                    ctx.fillRect(tree.x - 2, tree.y - tree.size, 4, tree.size);
+                } else {
+                    ctx.fillStyle = '#3d6a3d';
+                    ctx.beginPath();
+                    ctx.arc(tree.x, tree.y, tree.size * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw enemies
+            gameState.enemies.forEach(enemy => {
+                // Enemy body
+                ctx.fillStyle = enemy.state === 'chase' ? '#aa3333' : '#aa6633';
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Enemy weapon
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(enemy.x, enemy.y);
+                ctx.lineTo(enemy.x + enemy.size * 0.8, enemy.y - enemy.size * 0.3);
+                ctx.stroke();
+
+                // Health bar
+                if (enemy.health < 30) {
+                    const barWidth = 20;
+                    const barHeight = 4;
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.size - 8, barWidth, barHeight);
+                    ctx.fillStyle = '#ff3333';
+                    ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.size - 8, (enemy.health / 30) * barWidth, barHeight);
+                }
+            });
+
+            // Draw player (Shannon)
+            ctx.fillStyle = '#44aa44';
+            ctx.beginPath();
+            ctx.arc(gameState.player.x, gameState.player.y, gameState.player.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Player weapon
+            const dx = gameState.mouse.x - gameState.player.x;
+            const dy = gameState.mouse.y - gameState.player.y;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(gameState.player.x, gameState.player.y);
+            ctx.lineTo(
+                gameState.player.x + Math.cos(angle) * (gameState.player.size + 8),
+                gameState.player.y + Math.sin(angle) * (gameState.player.size + 8)
+            );
+            ctx.stroke();
+
+            // Draw bullets
+            ctx.fillStyle = '#ffff44';
+            gameState.bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw enemy bullets
+            ctx.fillStyle = '#ff4444';
+            gameState.enemyBullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw explosions
+            gameState.explosions.forEach(explosion => {
+                const alpha = explosion.life / 20;
+                ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = `rgba(255, 200, 0, ${alpha * 0.7})`;
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.size * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function updateHUD() {
+            document.getElementById('healthText').textContent = Math.max(0, gameState.player.health);
+            document.getElementById('healthFill').style.width = Math.max(0, (gameState.player.health / gameState.player.maxHealth) * 100) + '%';
+            
+            document.getElementById('ammoText').textContent = gameState.player.ammo;
+            document.getElementById('ammoFill').style.width = (gameState.player.ammo / gameState.player.maxAmmo) * 100 + '%';
+            
+            document.getElementById('killCount').textContent = gameState.kills;
+        }
+
+        function endGame(won) {
+            gameState.gameRunning = false;
+            const gameOverDiv = document.getElementById('gameOver');
+            const title = document.getElementById('gameOverTitle');
+            const text = document.getElementById('gameOverText');
+            
+            if (won) {
+                title.textContent = '🎖️ Mission Accomplished!';
+                text.textContent = `Shannon eliminated all ${gameState.kills} enemy combatants and survived the jungle!`;
+            } else {
+                title.textContent = '💀 Mission Failed';
+                text.textContent = `Shannon was overwhelmed by enemy forces. ${gameState.kills} enemies eliminated.`;
+            }
+            
+            gameOverDiv.style.display = 'block';
+        }
+
+        function restartGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            initGame();
+            gameLoop();
+        }
+
+        // Initialize and start game
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
