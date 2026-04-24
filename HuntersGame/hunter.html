@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shadow Hunter: Gate Protocol</title>
+  <style>
+    :root {
+      --bg: #050812;
+      --panel: rgba(9, 18, 38, 0.88);
+      --panel-2: rgba(15, 28, 58, 0.92);
+      --cyan: #39e6ff;
+      --cyan-soft: rgba(57, 230, 255, 0.2);
+      --violet: #8b5cf6;
+      --red: #ff315a;
+      --gold: #ffd166;
+      --green: #38f28a;
+      --text: #e7f7ff;
+      --muted: #87a5bb;
+      --danger: #ff4b6a;
+      --shadow: 0 0 22px rgba(57, 230, 255, 0.2), inset 0 0 18px rgba(57, 230, 255, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(57, 230, 255, 0.12), transparent 26%),
+        radial-gradient(circle at 80% 0%, rgba(139, 92, 246, 0.16), transparent 25%),
+        linear-gradient(160deg, #02040b, #071120 55%, #02040b);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .scanline {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.025),
+        rgba(255,255,255,0.025) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+      mix-blend-mode: screen;
+      opacity: 0.38;
+      z-index: 9;
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 320px minmax(420px, 1fr) 350px;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(57, 230, 255, 0.35);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(57,230,255,0.08), transparent 35%, rgba(139,92,246,0.06));
+      pointer-events: none;
+    }
+
+    .panel > * { position: relative; z-index: 1; }
+
+    h1, h2, h3 { margin: 0; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { font-size: 22px; color: var(--cyan); text-shadow: 0 0 18px rgba(57,230,255,0.8); }
+    h2 { font-size: 14px; color: var(--cyan); margin-bottom: 12px; }
+    h3 { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+
+    .subtitle { color: var(--muted); font-size: 12px; margin-top: 7px; line-height: 1.4; }
+
+    .avatar {
+      border: 1px solid rgba(57,230,255,0.36);
+      border-radius: 16px;
+      min-height: 140px;
+      margin: 14px 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle, rgba(57,230,255,0.22), transparent 46%),
+        linear-gradient(145deg, rgba(5,12,28,0.8), rgba(20,14,48,0.8));
+      overflow: hidden;
+    }
+
+    .hunter-sigil {
+      width: 92px;
+      height: 92px;
+      border: 2px solid var(--cyan);
+      transform: rotate(45deg);
+      box-shadow: 0 0 24px rgba(57,230,255,0.72), inset 0 0 24px rgba(57,230,255,0.22);
+      display: grid;
+      place-items: center;
+      animation: pulse 1.8s infinite alternate;
+    }
+
+    .hunter-sigil span {
+      transform: rotate(-45deg);
+      font-size: 32px;
+      color: var(--cyan);
+      text-shadow: 0 0 12px var(--cyan);
+    }
+
+    @keyframes pulse {
+      from { filter: brightness(0.9); }
+      to { filter: brightness(1.35); }
+    }
+
+    .stat-row, .equip-row, .inv-row, .quest-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      font-size: 13px;
+    }
+
+    .stat-row b, .equip-row b { color: var(--text); }
+    .stat-row span, .equip-row span, .inv-row span { color: var(--muted); }
+
+    .rank {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(57,230,255,0.45);
+      border-radius: 999px;
+      padding: 7px 12px;
+      color: var(--gold);
+      background: rgba(255,209,102,0.08);
+      margin-top: 10px;
+      font-weight: 700;
+    }
+
+    .bar-wrap { margin: 12px 0; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .bar {
+      height: 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar > div { height: 100%; width: 50%; background: linear-gradient(90deg, var(--cyan), var(--violet)); box-shadow: 0 0 12px rgba(57,230,255,0.8); transition: width 0.35s ease; }
+    .bar.hp > div { background: linear-gradient(90deg, var(--red), #ff9f1c); }
+    .bar.enemy > div { background: linear-gradient(90deg, var(--danger), #9d0208); }
+
+    .main-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .system-alert {
+      border: 1px solid rgba(57,230,255,0.4);
+      background: rgba(57,230,255,0.08);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      color: var(--text);
+      min-height: 76px;
+      line-height: 1.45;
+    }
+
+    .battlefield {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.24);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 190px;
+    }
+
+    .enemy-visual {
+      height: 88px;
+      border-radius: 14px;
+      margin: 12px 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle, rgba(255,49,90,0.36), transparent 42%),
+        linear-gradient(130deg, rgba(255,49,90,0.08), rgba(139,92,246,0.12));
+      border: 1px solid rgba(255,49,90,0.32);
+      color: var(--red);
+      font-size: 38px;
+      text-shadow: 0 0 18px var(--red);
+    }
+
+    .gate-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .gate {
+      border: 1px solid rgba(57,230,255,0.28);
+      background: rgba(57,230,255,0.06);
+      border-radius: 14px;
+      padding: 10px;
+      cursor: pointer;
+      transition: 0.18s ease;
+      min-height: 112px;
+    }
+
+    .gate:hover { transform: translateY(-2px); border-color: var(--cyan); box-shadow: 0 0 16px rgba(57,230,255,0.22); }
+    .gate.selected { border-color: var(--gold); box-shadow: 0 0 18px rgba(255,209,102,0.22); }
+    .gate.red { border-color: rgba(255,49,90,0.7); background: rgba(255,49,90,0.09); }
+    .gate.red:hover, .gate.red.selected { box-shadow: 0 0 20px rgba(255,49,90,0.32); }
+    .gate-title { color: var(--text); font-weight: 700; font-size: 12px; margin-bottom: 7px; }
+    .gate-meta { color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 1px solid rgba(57,230,255,0.45);
+      background: rgba(57,230,255,0.09);
+      color: var(--text);
+      padding: 11px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      transition: 0.15s ease;
+    }
+
+    button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(57,230,255,0.18); box-shadow: 0 0 15px rgba(57,230,255,0.2); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.danger { border-color: rgba(255,49,90,0.55); background: rgba(255,49,90,0.1); }
+    button.gold { border-color: rgba(255,209,102,0.65); background: rgba(255,209,102,0.1); }
+    button.green { border-color: rgba(56,242,138,0.55); background: rgba(56,242,138,0.1); }
+
+    .log {
+      height: 250px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--muted);
+      padding-right: 6px;
+    }
+
+    .log p { margin: 0 0 8px; }
+    .log .good { color: var(--green); }
+    .log .bad { color: var(--danger); }
+    .log .rare { color: var(--gold); }
+    .log .sys { color: var(--cyan); }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 7px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      font-size: 10px;
+      color: var(--muted);
+      margin-right: 5px;
+    }
+
+    .shop-item, .item {
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.035);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .item b, .shop-item b { display: block; color: var(--text); margin-bottom: 5px; }
+    .item small, .shop-item small { color: var(--muted); line-height: 1.45; display: block; }
+
+    .two-btn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+    .floating-gate {
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border: 2px solid rgba(57,230,255,0.12);
+      border-radius: 50%;
+      right: -220px;
+      bottom: -170px;
+      background: radial-gradient(circle, rgba(57,230,255,0.09), transparent 65%);
+      box-shadow: 0 0 80px rgba(57,230,255,0.11);
+      animation: spin 18s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: none;
+      place-items: center;
+      z-index: 20;
+      padding: 20px;
+    }
+
+    .modal.show { display: grid; }
+    .modal-box {
+      max-width: 620px;
+      background: rgba(6, 14, 32, 0.97);
+      border: 1px solid rgba(57,230,255,0.48);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 0 42px rgba(57,230,255,0.22);
+    }
+
+    .modal-box p { color: var(--muted); line-height: 1.55; }
+
+    @media (max-width: 1100px) {
+      .wrap { grid-template-columns: 1fr; }
+      .gate-list { grid-template-columns: 1fr; }
+      .battlefield { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+  <div class="floating-gate"></div>
+
+  <div class="wrap">
+    <aside class="panel">
+      <h1>Gate Protocol</h1>
+      <div class="subtitle">An original browser RPG inspired by hunter-system progression: clear gates, survive invasions, collect relics, and climb ranks.</div>
+      <div class="avatar"><div class="hunter-sigil"><span>⚔</span></div></div>
+      <div class="rank" id="rankBadge">Rank E Hunter</div>
+      <div class="rank" id="goldBadge" style="color:var(--gold); background:rgba(255,209,102,0.08); border-color:rgba(255,209,102,0.55);">Gold: 0</div>
+
+      <div class="bar-wrap">
+        <div class="bar-label"><span>HP</span><span id="hpText"></span></div>
+        <div class="bar hp"><div id="hpBar"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>EXP</span><span id="xpText"></span></div>
+        <div class="bar"><div id="xpBar"></div></div>
+      </div>
+
+      <h2>Stats</h2>
+      <div id="stats"></div>
+      <button class="green" style="width:100%; margin-top:12px" onclick="train()">Daily Training</button>
+      <button class="gold" style="width:100%; margin-top:8px" onclick="attemptRankUp()">Rank Evaluation</button>
+    </aside>
+
+    <main class="panel">
+      <div class="main-title">
+        <div>
+          <h1>System Window</h1>
+          <div class="subtitle" id="dayText">Day 1 · City Stability 100%</div>
+        </div>
+        <button onclick="newRun()">New Game</button>
+      </div>
+
+      <div class="system-alert" id="alertBox"></div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h2>City Overrun Rule</h2>
+        <div id="overrunInfo" class="gate-meta"></div>
+      </div>
+
+      <div class="battlefield">
+        <div class="card">
+          <h2>Selected Gate</h2>
+          <div id="selectedGate">No gate selected. Choose a gate scan below.</div>
+        </div>
+        <div class="card">
+          <h2>Enemy</h2>
+          <div class="enemy-visual" id="enemyIcon">?</div>
+          <div id="enemyInfo">No active battle.</div>
+          <div class="bar-wrap" id="enemyBarWrap" style="display:none">
+            <div class="bar-label"><span>Enemy HP</span><span id="enemyHpText"></span></div>
+            <div class="bar enemy"><div id="enemyHpBar"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Gate Scans</h2>
+      <div class="gate-list" id="gateList"></div>
+
+      <div class="card" style="margin-top:14px" id="monarchPanel">
+        <h2>Monarch Endgame</h2>
+        <div id="monarchInfo" class="gate-meta"></div>
+        <div class="gate-list" id="monarchList"></div>
+      </div>
+
+      <div class="actions">
+        <button onclick="enterGate()" id="enterBtn">Enter Gate</button>
+        <button onclick="attack()" id="attackBtn">Attack</button>
+        <button onclick="usePotion()" id="potionBtn">Potion</button>
+        <button class="danger" onclick="escapeGate()" id="escapeBtn">Escape</button>
+      </div>
+    </main>
+
+    <aside class="panel">
+      <h2>Equipment</h2>
+      <div class="subtitle" style="margin-bottom:10px">Equipped item stats are shown here so you can compare shop and loot upgrades.</div>
+      <div id="equipment"></div>
+
+      <h2 style="margin-top:16px">Inventory</h2>
+      <div id="inventory"></div>
+
+      <h2 style="margin-top:16px">Relic Shop</h2>
+      <div class="system-alert" style="min-height:auto; padding:10px; margin-bottom:10px">
+        <b style="color:var(--gold)">Available Gold:</b> <span id="shopGold">0</span><br>
+        <span class="gate-meta" id="shopRefreshInfo">Shop stock refreshes every 3 days and after rank advancement. Items scale to your current rank.</span>
+      </div>
+      <div id="shop"></div>
+
+      <h2 style="margin-top:16px">Activity Log</h2>
+      <div class="log" id="log"></div>
+    </aside>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <h1 id="modalTitle">Title</h1>
+      <p id="modalText"></p>
+      <button onclick="closeModal()">Continue</button>
+    </div>
+  </div>
+
+  <script>
+    const ranks = ["E", "D", "C", "B", "A", "S", "National"];
+    const rankThresholds = [0, 60, 160, 330, 580, 900, 1300];
+    const gateTypes = [
+      { name: "Goblin Nest", icon: "👹", base: 8, loot: "Cracked Fang" },
+      { name: "Cursed Mine", icon: "⛏", base: 12, loot: "Mana Ore" },
+      { name: "Spider Crypt", icon: "🕷", base: 15, loot: "Silk Core" },
+      { name: "Knight Tomb", icon: "🛡", base: 22, loot: "Rust Relic" },
+      { name: "Demon Hall", icon: "🔥", base: 32, loot: "Demon Ember" },
+      { name: "Frost Cathedral", icon: "❄", base: 45, loot: "Frozen Sigil" }
+    ];
+
+    const state = {
+      day: 1,
+      stability: 100,
+      level: 1,
+      xp: 0,
+      gold: 40,
+      rankIndex: 0,
+      statPoints: 0,
+      hp: 100,
+      maxHp: 100,
+      atk: 9,
+      def: 3,
+      agi: 4,
+      cleared: 0,
+      redCleared: 0,
+      selectedGate: null,
+      activeGate: null,
+      enemy: null,
+      inventory: [
+        { id: crypto.randomUUID(), name: "Minor Healing Potion", type: "potion", heal: 45, desc: "Restores 45 HP." }
+      ],
+      equipment: {
+        weapon: { name: "Training Dagger", atk: 2, def: 0, agi: 1 },
+        armor: { name: "Old Hunter Coat", atk: 0, def: 2, agi: 0 },
+        relic: { name: "Empty Relic Slot", atk: 0, def: 0, agi: 0 }
+      },
+      gates: [],
+      shopItems: [],
+      nextShopRefreshDay: 4,
+      monarchs: [],
+      worldCorruption: 0,
+      resetCount: 0,
+      log: []
+    };
+
+    const monarchTemplates = [
+      { name: "Monarch of Frost", icon: "❄", hp: 760, atk: 72, def: 18, reward: 450, gold: 420, desc: "Slows your growth by freezing the world economy. Strong defense check." },
+      { name: "Monarch of Fangs", icon: "🐺", hp: 620, atk: 92, def: 12, reward: 520, gold: 460, desc: "Fast predator monarch. High dodge and damage pressure." },
+      { name: "Monarch of Plagues", icon: "☠", hp: 840, atk: 66, def: 20, reward: 560, gold: 520, desc: "Attrition boss. Defeat it before corruption spirals." },
+      { name: "Monarch of Iron", icon: "🜃", hp: 980, atk: 78, def: 28, reward: 650, gold: 620, desc: "Armor wall. Requires real attack scaling, not just rank title." },
+      { name: "Monarch of Ruin", icon: "👑", hp: 1400, atk: 108, def: 32, reward: 1000, gold: 1000, final: true, desc: "Final monarch. Defeating it unlocks World Reset." }
+    ];
+
+    function freshMonarchs() {
+      return monarchTemplates.map((m, index) => ({ ...m, id: crypto.randomUUID(), defeated: false, locked: index > 0 }));
+    }
+
+    const shopBlueprints = [
+      { name: "Fang Blade", slot: "weapon", atk: 7, def: 0, agi: 1, desc: "Fast offensive weapon." },
+      { name: "Execution Sword", slot: "weapon", atk: 11, def: 0, agi: -1, desc: "Heavy damage weapon." },
+      { name: "Mana Guard Armor", slot: "armor", atk: 0, def: 9, agi: -1, desc: "Reliable defensive armor." },
+      { name: "Shadow Coat", slot: "armor", atk: 1, def: 5, agi: 4, desc: "Light armor for agile hunters." },
+      { name: "Reflex Charm", slot: "relic", atk: 3, def: 2, agi: 7, desc: "Relic focused on speed." },
+      { name: "Core Amplifier", slot: "relic", atk: 6, def: 3, agi: 1, desc: "Relic focused on damage." },
+      { name: "Phoenix Potion", slot: "potion", heal: 100, desc: "Restores HP." }
+    ];
+
+    const rankShopPrefixes = ["Novice", "Iron", "Steel", "Arcane", "Abyss", "Sovereign", "Mythic"];
+
+    function generateShopStock() {
+      const rankPower = state.rankIndex + 1 + state.resetCount;
+      const stock = [];
+      const equipmentCount = 4;
+      const shuffled = [...shopBlueprints.filter(i => i.slot !== "potion")].sort(() => Math.random() - 0.5);
+
+      for (let i = 0; i < equipmentCount; i++) {
+        const base = shuffled[i % shuffled.length];
+        const variance = rand(0, 2);
+        const power = rankPower + variance;
+        stock.push({
+          id: crypto.randomUUID(),
+          name: `${rankShopPrefixes[Math.min(rankShopPrefixes.length - 1, state.rankIndex)]} ${base.name} +${power}`,
+          slot: base.slot,
+          atk: Math.max(0, Math.floor((base.atk || 0) * (0.75 + power * 0.34))),
+          def: Math.max(0, Math.floor((base.def || 0) * (0.75 + power * 0.34))),
+          agi: Math.floor((base.agi || 0) * (0.75 + power * 0.28)),
+          cost: Math.floor(45 + power * 38 + ((base.atk || 0) + (base.def || 0) + Math.abs(base.agi || 0)) * 9),
+          desc: base.desc
+        });
+      }
+
+      const potionPower = 70 + rankPower * 35;
+      stock.push({
+        id: crypto.randomUUID(),
+        name: `${rankShopPrefixes[Math.min(rankShopPrefixes.length - 1, state.rankIndex)]} Recovery Potion`,
+        slot: "potion",
+        heal: potionPower,
+        cost: Math.floor(35 + rankPower * 18),
+        desc: `Restores ${potionPower} HP.`
+      });
+
+      state.shopItems = stock;
+      state.nextShopRefreshDay = state.day + 3;
+    }
+
+    function refreshShop(reason = "Shop stock refreshed.") {
+      generateShopStock();
+      log(reason, "sys");
+    }
+
+    function totalAtk() { return state.atk + Object.values(state.equipment).reduce((s, i) => s + (i.atk || 0), 0); }
+    function totalDef() { return state.def + Object.values(state.equipment).reduce((s, i) => s + (i.def || 0), 0); }
+    function totalAgi() { return state.agi + Object.values(state.equipment).reduce((s, i) => s + (i.agi || 0), 0); }
+
+    function log(text, cls = "") {
+      state.log.unshift({ text, cls });
+      state.log = state.log.slice(0, 80);
+      render();
+    }
+
+    function alertSystem(text) {
+      document.getElementById("alertBox").innerHTML = text;
+    }
+
+    function rollGates() {
+      state.gates = Array.from({ length: 3 }, (_, i) => {
+        const rankBias = state.rankIndex * 10;
+        const type = gateTypes[Math.min(gateTypes.length - 1, Math.floor(Math.random() * (2 + state.rankIndex)))];
+        const red = Math.random() < 0.18 + state.rankIndex * 0.025;
+        const difficulty = type.base + rankBias + Math.floor(Math.random() * 18) + (red ? 35 : 0);
+        const reward = Math.floor(difficulty * (red ? 2.25 : 1.15));
+        return {
+          id: crypto.randomUUID(),
+          name: red ? "RED GATE: " + type.name : type.name,
+          type,
+          red,
+          difficulty,
+          reward,
+          rank: ranks[Math.min(ranks.length - 1, Math.floor(difficulty / 28))]
+        };
+      });
+      state.selectedGate = state.gates[0];
+    }
+
+    function makeEnemy(gate) {
+      if (gate.monarch) {
+        const scale = 1 + state.resetCount * 0.18;
+        const hp = Math.floor(gate.hp * scale);
+        return {
+          name: gate.name,
+          icon: gate.icon,
+          hp,
+          maxHp: hp,
+          atk: Math.floor(gate.atk * scale),
+          def: Math.floor(gate.def * scale),
+          xp: gate.reward,
+          gold: gate.gold,
+          monarchId: gate.id
+        };
+      }
+      const hp = gate.difficulty * 3 + Math.floor(Math.random() * 30);
+      return {
+        name: gate.red ? "Gate Sovereign" : gate.type.name.replace("Nest", "Brute").replace("Crypt", "Stalker").replace("Mine", "Warden"),
+        icon: gate.type.icon,
+        hp,
+        maxHp: hp,
+        atk: Math.floor(gate.difficulty * 0.45) + (gate.red ? 12 : 0),
+        def: Math.floor(gate.difficulty * 0.12),
+        xp: gate.reward,
+        gold: Math.floor(gate.reward * 0.72)
+      };
+    }
+
+    function selectGate(id) {
+      if (state.enemy) return;
+      state.selectedGate = state.gates.find(g => g.id === id);
+      render();
+    }
+
+    function enterGate() {
+      if (state.enemy || !state.selectedGate) return;
+      state.activeGate = state.selectedGate;
+      state.enemy = makeEnemy(state.activeGate);
+      if (state.activeGate.red) {
+        alertSystem(`<b style="color:var(--red)">WARNING: RED GATE LOCKED.</b><br>Escape chance is reduced. The gate will not reopen until the boss is dead.`);
+        log("A Red Gate swallowed the raid zone. The exit collapsed behind you.", "bad");
+      } else {
+        alertSystem(`<b>Gate entered.</b><br>Defeat the boss, loot the core, and exit before the city stability drops.`);
+        log(`Entered ${state.activeGate.name}.`, "sys");
+      }
+      render();
+    }
+
+    function enterMonarch(id) {
+      if (state.enemy || state.rankIndex < ranks.length - 1) return;
+      const monarch = state.monarchs.find(m => m.id === id);
+      if (!monarch || monarch.defeated || monarch.locked) return;
+      state.activeGate = { ...monarch, monarch: true, red: true, type: { loot: "Monarch Core", name: monarch.name }, difficulty: monarch.atk + monarch.def };
+      state.enemy = makeEnemy(state.activeGate);
+      alertSystem(`<b style="color:var(--red)">MONARCH INCURSION.</b><br>This is not a gate clear. This is a world boss. Defeat it to reduce corruption and unlock the next Monarch.`);
+      log(`${monarch.name} descended into the world. The System marks this as an extinction-class battle.`, "bad");
+      render();
+    }
+
+    function attack() {
+      if (!state.enemy) return;
+      const crit = Math.random() < 0.08 + totalAgi() * 0.004;
+      const damage = Math.max(1, totalAtk() + rand(0, 7) - state.enemy.def) * (crit ? 2 : 1);
+      state.enemy.hp = Math.max(0, state.enemy.hp - damage);
+      log(`${crit ? "Critical strike! " : ""}You dealt ${damage} damage.`, crit ? "rare" : "");
+
+      if (state.enemy.hp <= 0) {
+        clearGate();
+        return;
+      }
+
+      const dodge = Math.random() < Math.min(0.35, totalAgi() * 0.01);
+      if (dodge) {
+        log("You evaded the counterattack.", "good");
+      } else {
+        const hit = Math.max(1, state.enemy.atk + rand(0, 8) - totalDef());
+        state.hp = Math.max(0, state.hp - hit);
+        log(`${state.enemy.name} hit you for ${hit} damage.`, "bad");
+      }
+
+      if (state.hp <= 0) defeat();
+      render();
+    }
+
+    function clearGate() {
+      const gate = state.activeGate;
+      const enemy = state.enemy;
+      state.xp += enemy.xp;
+      state.gold += enemy.gold;
+
+      if (gate.monarch) {
+        defeatMonarch(enemy.monarchId);
+        state.enemy = null;
+        state.activeGate = null;
+        levelCheck();
+        render();
+        return;
+      }
+
+      state.cleared++;
+      const stabilityGain = gate.red ? 18 : 10;
+      state.stability = Math.min(100, state.stability + stabilityGain);
+
+      if (gate.red) {
+        state.redCleared++;
+        state.statPoints += 2;
+        maybeDropItem(true);
+        showModal("RED GATE CLEARED", "You broke a locked gate and gained 2 bonus stat points. Red Gates are brutal, but they accelerate your growth.");
+      } else {
+        maybeDropItem(false);
+      }
+
+      log(`Gate cleared. Gained ${enemy.xp} EXP, ${enemy.gold} gold, and restored ${stabilityGain}% city stability.`, "good");
+      state.enemy = null;
+      state.activeGate = null;
+      levelCheck();
+      nextDay({ protectedByClear: true });
+      rollGates();
+      render();
+    }
+
+    function defeatMonarch(id) {
+      const idx = state.monarchs.findIndex(m => m.id === id);
+      if (idx === -1) return;
+      const monarch = state.monarchs[idx];
+      monarch.defeated = true;
+
+      const corruptionDrop = monarch.final ? 40 : 24;
+      state.worldCorruption = Math.max(0, state.worldCorruption - corruptionDrop);
+      state.statPoints += monarch.final ? 8 : 4;
+      state.maxHp += monarch.final ? 90 : 40;
+      state.hp = state.maxHp;
+      state.atk += monarch.final ? 9 : 4;
+      state.def += monarch.final ? 7 : 3;
+      state.agi += monarch.final ? 7 : 3;
+      maybeDropItem(true);
+
+      log(`${monarch.name} defeated. Corruption -${corruptionDrop}%. Permanent power increased.`, "rare");
+
+      if (state.monarchs[idx + 1]) {
+        state.monarchs[idx + 1].locked = false;
+        log(`${state.monarchs[idx + 1].name} has awakened.`, "bad");
+        showModal("MONARCH DEFEATED", `${monarch.name} has fallen. You gained permanent stats, reduced World Corruption, and unlocked the next Monarch.`);
+      } else {
+        showModal("WORLD RESET AVAILABLE", "All Monarchs are defeated. Press World Reset to restart the timeline with a memory bonus. The next cycle will be harder.");
+      }
+    }
+
+    function resetWorld() {
+      if (!state.monarchs.length || !state.monarchs.every(m => m.defeated)) {
+        log("World Reset is locked until all Monarchs are defeated.", "bad");
+        return;
+      }
+
+      const nextReset = state.resetCount + 1;
+      Object.assign(state, {
+        day: 1,
+        stability: 100,
+        level: 5 + nextReset * 2,
+        xp: 0,
+        gold: 120 + nextReset * 80,
+        rankIndex: 0,
+        statPoints: 4 + nextReset * 2,
+        hp: 160 + nextReset * 45,
+        maxHp: 160 + nextReset * 45,
+        atk: 16 + nextReset * 5,
+        def: 8 + nextReset * 3,
+        agi: 8 + nextReset * 3,
+        cleared: 0,
+        redCleared: 0,
+        selectedGate: null,
+        activeGate: null,
+        enemy: null,
+        inventory: [{ id: crypto.randomUUID(), name: "Timeline Recovery Potion", type: "potion", heal: 120, desc: "Restores 120 HP." }],
+        equipment: {
+          weapon: { name: "Reset Blade", atk: 6 + nextReset * 2, def: 0, agi: 2 },
+          armor: { name: "Memory Mantle", atk: 0, def: 5 + nextReset * 2, agi: 0 },
+          relic: { name: "Echo of the Previous World", atk: 2 + nextReset, def: 2 + nextReset, agi: 2 + nextReset }
+        },
+        gates: [],
+        shopItems: [],
+        nextShopRefreshDay: 4,
+        monarchs: freshMonarchs(),
+        worldCorruption: 0,
+        resetCount: nextReset,
+        log: []
+      });
+      rollGates();
+      generateShopStock();
+      alertSystem(`<b style="color:var(--cyan)">WORLD RESET COMPLETE.</b><br>Cycle ${state.resetCount + 1} begins. Reach National rank again to face stronger Monarchs.`);
+      log(`World Reset ${state.resetCount} complete. You kept a timeline memory bonus.`, "rare");
+      render();
+    }
+
+    function maybeDropItem(red) {
+      const chance = red ? 0.85 : 0.42;
+      if (Math.random() > chance) return;
+      const power = state.rankIndex + (red ? 3 : 1) + rand(0, 2);
+      const roll = Math.random();
+      let item;
+      if (roll < 0.34) item = { id: crypto.randomUUID(), name: `${red ? "Crimson" : "Iron"} Edge +${power}`, type: "weapon", atk: 3 + power * 3, def: 0, agi: power, desc: `Weapon: +${3 + power * 3} ATK, +${power} AGI` };
+      else if (roll < 0.67) item = { id: crypto.randomUUID(), name: `${red ? "Bloodforged" : "Steel"} Aegis +${power}`, type: "armor", atk: 0, def: 3 + power * 3, agi: 0, desc: `Armor: +${3 + power * 3} DEF` };
+      else item = { id: crypto.randomUUID(), name: `${red ? "Red Core" : "Mana Core"} Relic +${power}`, type: "relic", atk: power * 2, def: power * 2, agi: power * 2, desc: `Relic: +${power * 2} ATK/DEF/AGI` };
+      state.inventory.push(item);
+      log(`Item acquired: ${item.name}.`, red ? "rare" : "good");
+    }
+
+    function defeat() {
+      const loss = Math.min(state.gold, Math.floor(30 + state.level * 10));
+      state.gold -= loss;
+      state.hp = Math.floor(state.maxHp * 0.55);
+      state.stability = Math.max(0, state.stability - 15);
+      log(`You were defeated and extracted by emergency protocol. Lost ${loss} gold.`, "bad");
+      showModal("EMERGENCY EXTRACTION", "Your HP reached zero. You survived, but the city paid the price. Train, equip better relics, and choose gates wisely.");
+      state.enemy = null;
+      state.activeGate = null;
+      nextDay();
+      rollGates();
+      render();
+    }
+
+    function escapeGate() {
+      if (!state.enemy) return;
+      const chance = state.activeGate.red ? 0.18 : 0.62;
+      if (Math.random() < chance) {
+        log("You escaped the gate.", "sys");
+        state.stability = Math.max(0, state.stability - (state.activeGate.red ? 12 : 5));
+        state.enemy = null;
+        state.activeGate = null;
+        nextDay();
+        rollGates();
+      } else {
+        log("Escape failed. The gate rejects your retreat.", "bad");
+        const hit = Math.max(1, state.enemy.atk + rand(5, 13) - totalDef());
+        state.hp = Math.max(0, state.hp - hit);
+        log(`Punishment strike: ${hit} damage.`, "bad");
+        if (state.hp <= 0) defeat();
+      }
+      render();
+    }
+
+    function usePotion() {
+      const index = state.inventory.findIndex(i => i.type === "potion");
+      if (index === -1) { log("No potions available.", "bad"); return; }
+      const potion = state.inventory.splice(index, 1)[0];
+      state.hp = Math.min(state.maxHp, state.hp + potion.heal);
+      log(`Used ${potion.name}. Restored ${potion.heal} HP.`, "good");
+      render();
+    }
+
+    function train() {
+      if (state.enemy) return;
+      state.hp = Math.min(state.maxHp, state.hp + 25);
+      state.xp += 12 + state.rankIndex * 4;
+      state.statPoints += 1;
+      state.stability = Math.max(0, state.stability - 2);
+      log("Daily quest complete: push-ups, sword drills, mana breathing. +1 stat point.", "sys");
+      levelCheck();
+      nextDay();
+      render();
+    }
+
+    function levelCheck() {
+      let needed = xpNeeded();
+      while (state.xp >= needed) {
+        state.xp -= needed;
+        state.level++;
+        state.maxHp += 16;
+        state.hp = state.maxHp;
+        state.atk += 2;
+        state.def += 1;
+        state.agi += 1;
+        state.statPoints += 2;
+        log(`Level up! You are now level ${state.level}. +2 stat points.`, "rare");
+        needed = xpNeeded();
+      }
+    }
+
+    function xpNeeded() { return 60 + state.level * 32 + state.rankIndex * 24; }
+
+    function nextDay(options = {}) {
+      state.day++;
+      if (state.rankIndex >= ranks.length - 1 && state.monarchs.length && !state.monarchs.every(m => m.defeated)) {
+        const corruptionGain = options.protectedByClear ? rand(1, 3) : rand(3, 7);
+        state.worldCorruption = Math.min(100, state.worldCorruption + corruptionGain);
+        log(`Monarch pressure increased World Corruption by ${corruptionGain}%.`, state.worldCorruption >= 70 ? "bad" : "rare");
+      }
+      const dailyDrain = options.protectedByClear ? rand(0, 2) : rand(2, 7);
+      state.stability = Math.max(0, state.stability - dailyDrain);
+      if (state.day >= state.nextShopRefreshDay) {
+        refreshShop("Relic Shop stock refreshed for the current rank.");
+      }
+      if (options.protectedByClear) {
+        log(`Gate suppression reduced today's stability loss to ${dailyDrain}%.`, "good");
+      }
+      if (state.stability <= 45 && state.stability > 20) {
+        log("Warning: city stability is low. Clear gates soon or invasions may overrun the city.", "rare");
+      }
+      if (state.stability <= 20 && state.stability > 0) {
+        log("CRITICAL: city stability is near collapse. One bad day can cause an overrun.", "bad");
+      }
+      if (!options.protectedByClear && Math.random() < 0.2 + state.day * 0.002) {
+        state.stability = Math.max(0, state.stability - 8);
+        log("Gate invasion detected in a civilian district. City stability decreased.", "bad");
+      }
+      if (state.stability <= 0) {
+        showModal("CITY OVERRUN", "City Stability reached 0%. Gate invasions overwhelmed the city. Your hunter license was revoked, but the System rewound your status for another attempt.");
+        newRun(false);
+      }
+      if (state.worldCorruption >= 100) {
+        showModal("MONARCH APOCALYPSE", "World Corruption reached 100%. The Monarchs consumed this timeline. The System rewound the world to the beginning.");
+        newRun(false);
+      }
+    }
+
+    function attemptRankUp() {
+      if (state.enemy) return;
+      const next = state.rankIndex + 1;
+      if (next >= ranks.length) { log("You are already at the highest known rank.", "rare"); return; }
+      const threshold = rankThresholds[next];
+      const score = state.level * 28 + totalAtk() * 3 + totalDef() * 2 + totalAgi() * 2 + state.redCleared * 40;
+      if (score >= threshold) {
+        state.rankIndex = next;
+        state.gold += 70 * next;
+        state.maxHp += 30;
+        state.hp = state.maxHp;
+        log(`Rank advanced to ${ranks[state.rankIndex]}! Association bonus paid.`, "rare");
+        if (state.rankIndex === ranks.length - 1) {
+          state.worldCorruption = Math.max(state.worldCorruption, 12);
+          if (!state.monarchs.length) state.monarchs = freshMonarchs();
+          state.monarchs[0].locked = false;
+          log("National rank reached. Monarch signatures detected beyond the gates.", "bad");
+          showModal("NATIONAL LEVEL HUNTER", "You reached the ceiling of human hunters. The real endgame begins: Monarch incursions, World Corruption, and a final World Reset after all Monarchs fall.");
+        } else {
+          showModal("RANK ADVANCEMENT", `Evaluation complete. New classification: Rank ${ranks[state.rankIndex]}. Stronger gates have appeared on your scanner.`);
+        }
+        refreshShop(`Relic Shop refreshed for Rank ${ranks[state.rankIndex]}.`);
+        rollGates();
+      } else {
+        log(`Evaluation failed. Score ${score}/${threshold}. Clear harder gates or train more.`, "bad");
+      }
+      render();
+    }
+
+    function spendPoint(stat) {
+      if (state.statPoints <= 0 || state.enemy) return;
+      state.statPoints--;
+      if (stat === "atk") state.atk += 2;
+      if (stat === "def") state.def += 2;
+      if (stat === "agi") state.agi += 2;
+      if (stat === "hp") { state.maxHp += 20; state.hp += 20; }
+      render();
+    }
+
+    function equip(id) {
+      if (state.enemy) return;
+      const idx = state.inventory.findIndex(i => i.id === id);
+      if (idx === -1) return;
+      const item = state.inventory[idx];
+      if (!["weapon", "armor", "relic"].includes(item.type)) return;
+      const old = state.equipment[item.type];
+      state.equipment[item.type] = item;
+      state.inventory.splice(idx, 1);
+      if (!old.name.includes("Empty")) state.inventory.push({ ...old, id: crypto.randomUUID() });
+      log(`Equipped ${item.name}.`, "good");
+      render();
+    }
+
+    function sell(id) {
+      if (state.enemy) return;
+      const idx = state.inventory.findIndex(i => i.id === id);
+      if (idx === -1) return;
+      const item = state.inventory.splice(idx, 1)[0];
+      const value = item.type === "potion" ? 12 : 30 + (item.atk || 0) * 5 + (item.def || 0) * 4 + (item.agi || 0) * 5;
+      state.gold += value;
+      log(`Sold ${item.name} for ${value} gold.`, "sys");
+      render();
+    }
+
+    function buy(index) {
+      if (state.enemy) return;
+      const item = state.shopItems[index];
+      if (state.gold < item.cost) { log("Not enough gold.", "bad"); return; }
+      state.gold -= item.cost;
+      const newItem = { ...item, id: crypto.randomUUID(), type: item.slot };
+      delete newItem.cost;
+      delete newItem.slot;
+      state.inventory.push(newItem);
+      log(`Purchased ${item.name}.`, "good");
+      render();
+    }
+
+    function formatItemStats(item) {
+      const atk = item.atk || 0;
+      const def = item.def || 0;
+      const agi = item.agi || 0;
+      const heal = item.heal || 0;
+      if (item.type === "potion" || heal) return `Restores ${heal} HP`;
+      return `ATK ${atk >= 0 ? "+" : ""}${atk} · DEF ${def >= 0 ? "+" : ""}${def} · AGI ${agi >= 0 ? "+" : ""}${agi}`;
+    }
+
+    function compareItemToEquipped(item, equipped) {
+      const diffAtk = (item.atk || 0) - (equipped.atk || 0);
+      const diffDef = (item.def || 0) - (equipped.def || 0);
+      const diffAgi = (item.agi || 0) - (equipped.agi || 0);
+      const score = diffAtk + diffDef + diffAgi;
+      const color = score > 0 ? "var(--green)" : score < 0 ? "var(--red)" : "var(--muted)";
+      const verdict = score > 0 ? "Likely upgrade" : score < 0 ? "Likely downgrade / sidegrade" : "Sidegrade";
+      const part = (label, value) => `${label} ${value >= 0 ? "+" : ""}${value}`;
+      return `<span style="color:${color}">${verdict}</span><br>${part("ATK", diffAtk)} · ${part("DEF", diffDef)} · ${part("AGI", diffAgi)}`;
+    }
+
+    function render() {
+      document.getElementById("dayText").textContent = `Day ${state.day} · City Stability ${state.stability}% · Gold ${state.gold}`;
+      const dangerLevel = state.stability <= 20 ? "CRITICAL" : state.stability <= 45 ? "WARNING" : "STABLE";
+      const dangerColor = state.stability <= 20 ? "var(--red)" : state.stability <= 45 ? "var(--gold)" : "var(--green)";
+      document.getElementById("overrunInfo").innerHTML = `
+        The city is overrun when <b style="color:var(--red)">City Stability reaches 0%</b>.<br>
+        Current status: <b style="color:${dangerColor}">${dangerLevel}</b><br><br>
+        Stability goes down each day, drops harder after failed escapes or defeats, and sometimes drops because random invasions hit civilian districts.<br>
+        Clearing gates restores stability and suppresses extra invasion damage for that day. Red Gates restore more, but are much more dangerous.
+      `;
+      document.getElementById("rankBadge").textContent = `Rank ${ranks[state.rankIndex]} Hunter`;
+      document.getElementById("goldBadge").textContent = `Gold: ${state.gold}`;
+      document.getElementById("shopGold").textContent = state.gold;
+      document.getElementById("shopRefreshInfo").textContent = `Shop stock scales to Rank ${ranks[state.rankIndex]}. Next automatic refresh: Day ${state.nextShopRefreshDay}. Rank advancement refreshes instantly.`;
+      document.getElementById("hpText").textContent = `${state.hp}/${state.maxHp}`;
+      document.getElementById("hpBar").style.width = `${Math.max(0, state.hp / state.maxHp * 100)}%`;
+      document.getElementById("xpText").textContent = `${state.xp}/${xpNeeded()}`;
+      document.getElementById("xpBar").style.width = `${Math.min(100, state.xp / xpNeeded() * 100)}%`;
+
+      const stats = [
+        ["Level", state.level],
+        ["Attack", `${totalAtk()} (${state.atk} base)`],
+        ["Defense", `${totalDef()} (${state.def} base)`],
+        ["Agility", `${totalAgi()} (${state.agi} base)`],
+        ["Stat Points", state.statPoints],
+        ["Gates Cleared", state.cleared],
+        ["Red Gates", state.redCleared],
+        ["World Resets", state.resetCount],
+        ["World Corruption", state.rankIndex >= ranks.length - 1 ? `${state.worldCorruption}%` : "Locked"]
+      ];
+      document.getElementById("stats").innerHTML = stats.map(([k,v]) => `<div class="stat-row"><span>${k}</span><b>${v}</b></div>`).join("") +
+        `<div class="actions" style="grid-template-columns:repeat(2,1fr); margin-top:10px">
+          <button onclick="spendPoint('atk')">+ATK</button><button onclick="spendPoint('def')">+DEF</button>
+          <button onclick="spendPoint('agi')">+AGI</button><button onclick="spendPoint('hp')">+HP</button>
+        </div>`;
+
+      document.getElementById("monarchInfo").innerHTML = state.rankIndex < ranks.length - 1
+        ? `Reach <b>National Rank</b> to unlock Monarch incursions and World Corruption.`
+        : `World Corruption: <b style="color:${state.worldCorruption >= 70 ? "var(--red)" : state.worldCorruption >= 40 ? "var(--gold)" : "var(--green)"}">${state.worldCorruption}%</b><br>Defeat all Monarchs to unlock World Reset.`;
+
+      document.getElementById("monarchList").innerHTML = state.rankIndex < ranks.length - 1 ? "" : state.monarchs.map(m => `
+        <div class="gate red ${m.defeated ? "" : ""}" style="opacity:${m.locked ? 0.45 : 1}; cursor:${m.locked || m.defeated ? "default" : "pointer"}" onclick="enterMonarch('${m.id}')">
+          <div class="gate-title">${m.defeated ? "✓" : m.locked ? "🔒" : "👑"} ${m.name}</div>
+          <div class="gate-meta">
+            <span class="pill">HP ${Math.floor(m.hp * (1 + state.resetCount * 0.18))}</span><span class="pill">ATK ${Math.floor(m.atk * (1 + state.resetCount * 0.18))}</span><br>
+            ${m.desc}<br>
+            Status: ${m.defeated ? "Defeated" : m.locked ? "Locked" : "Awakened"}
+          </div>
+        </div>
+      `).join("") + (state.monarchs.length && state.monarchs.every(m => m.defeated) ? `<button class="gold" style="width:100%; margin-top:8px" onclick="resetWorld()">World Reset</button>` : "");
+
+      document.getElementById("gateList").innerHTML = state.gates.map(g => `
+        <div class="gate ${g.red ? "red" : ""} ${state.selectedGate && state.selectedGate.id === g.id ? "selected" : ""}" onclick="selectGate('${g.id}')">
+          <div class="gate-title">${g.red ? "⛔ " : "◆ "}${g.name}</div>
+          <div class="gate-meta">
+            <span class="pill">Rank ${g.rank}</span><span class="pill">Power ${g.difficulty}</span><br>
+            Reward: ${g.reward} EXP<br>
+            Loot: ${g.type.loot}
+          </div>
+        </div>
+      `).join("");
+
+      const g = state.selectedGate;
+      document.getElementById("selectedGate").innerHTML = g ? `
+        <div class="gate-title">${g.name}</div>
+        <div class="gate-meta">
+          Classification: <b>Rank ${g.rank}</b><br>
+          Instability: <b>${g.red ? "Red Gate / escape restricted" : "Normal"}</b><br>
+          Estimated Power: <b>${g.difficulty}</b><br>
+          Completion Reward: <b>${g.reward} EXP</b><br><br>
+          ${g.red ? "A locked dimensional anomaly. High risk, high reward." : "A standard break gate. Suitable for growth and loot."}
+        </div>` : "No gate selected.";
+
+      if (state.enemy) {
+        document.getElementById("enemyIcon").textContent = state.enemy.icon;
+        document.getElementById("enemyInfo").innerHTML = `<b>${state.enemy.name}</b><br><span class="gate-meta">ATK ${state.enemy.atk} · DEF ${state.enemy.def}</span>`;
+        document.getElementById("enemyBarWrap").style.display = "block";
+        document.getElementById("enemyHpText").textContent = `${state.enemy.hp}/${state.enemy.maxHp}`;
+        document.getElementById("enemyHpBar").style.width = `${state.enemy.hp / state.enemy.maxHp * 100}%`;
+      } else {
+        document.getElementById("enemyIcon").textContent = "?";
+        document.getElementById("enemyInfo").textContent = "No active battle.";
+        document.getElementById("enemyBarWrap").style.display = "none";
+      }
+
+      document.getElementById("equipment").innerHTML = Object.entries(state.equipment).map(([slot, item]) => `
+        <div class="shop-item">
+          <b>${slot.toUpperCase()}: ${item.name}</b>
+          <small>${formatItemStats(item)}</small>
+        </div>
+      `).join("");
+
+      document.getElementById("inventory").innerHTML = state.inventory.length ? state.inventory.map(i => `
+        <div class="item">
+          <b>${i.name}</b>
+          <small>${i.desc || "Unknown item."}</small>
+          <div class="two-btn">
+            ${["weapon", "armor", "relic"].includes(i.type) ? `<button onclick="equip('${i.id}')">Equip</button>` : `<button onclick="usePotion()">Use</button>`}
+            <button onclick="sell('${i.id}')">Sell</button>
+          </div>
+        </div>
+      `).join("") : `<div class="subtitle">Inventory empty.</div>`;
+
+      document.getElementById("shop").innerHTML = state.shopItems.map((i, idx) => {
+        const current = state.equipment[i.slot];
+        const comparison = i.slot === "potion" ? "Consumable item. No equipment comparison." : compareItemToEquipped(i, current);
+        return `
+          <div class="shop-item">
+            <b>${i.name} · ${i.cost}g</b>
+            <small>
+              ${i.desc}<br>
+              <span style="color:var(--cyan)">Compared to equipped ${i.slot}:</span><br>
+              ${comparison}
+            </small>
+            <button style="width:100%; margin-top:8px" onclick="buy(${idx})">Buy</button>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("log").innerHTML = state.log.map(l => `<p class="${l.cls}">▸ ${l.text}</p>`).join("");
+
+      document.getElementById("enterBtn").disabled = !!state.enemy || !state.selectedGate;
+      document.getElementById("attackBtn").disabled = !state.enemy;
+      document.getElementById("potionBtn").disabled = !state.enemy && !state.inventory.some(i => i.type === "potion");
+      document.getElementById("escapeBtn").disabled = !state.enemy;
+    }
+
+    function showModal(title, text) {
+      document.getElementById("modalTitle").textContent = title;
+      document.getElementById("modalText").textContent = text;
+      document.getElementById("modal").classList.add("show");
+    }
+
+    function closeModal() { document.getElementById("modal").classList.remove("show"); }
+
+    function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    function newRun(show = true) {
+      Object.assign(state, {
+        day: 1, stability: 100, level: 1, xp: 0, gold: 40, rankIndex: 0, statPoints: 0,
+        hp: 100, maxHp: 100, atk: 9, def: 3, agi: 4, cleared: 0, redCleared: 0,
+        selectedGate: null, activeGate: null, enemy: null,
+        inventory: [{ id: crypto.randomUUID(), name: "Minor Healing Potion", type: "potion", heal: 45, desc: "Restores 45 HP." }],
+        equipment: {
+          weapon: { name: "Training Dagger", atk: 2, def: 0, agi: 1 },
+          armor: { name: "Old Hunter Coat", atk: 0, def: 2, agi: 0 },
+          relic: { name: "Empty Relic Slot", atk: 0, def: 0, agi: 0 }
+        },
+        gates: [],
+        shopItems: [],
+        nextShopRefreshDay: 4,
+        monarchs: freshMonarchs(),
+        worldCorruption: 0,
+        resetCount: state.resetCount || 0,
+        log: []
+      });
+      rollGates();
+      generateShopStock();
+      alertSystem("<b>System awakened.</b><br>Clear gates to gain EXP. Red Gates are dangerous anomalies with better loot. Spend stat points, equip relics, and pass rank evaluations.");
+      log("Welcome, hunter. Gate scanner online.", "sys");
+      if (show) showModal("SYSTEM AWAKENED", "A private progression interface has bound itself to you. Survive gates, grow stronger, and defend the city from dimensional invasions.");
+      render();
+    }
+
+    newRun(false);
+  </script>
+</body>
+</html>
